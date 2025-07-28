@@ -3,11 +3,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Icon from '@/components/ui/icon';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Все');
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   const categories = ['Все', 'Фильмы', 'Сериалы', 'Документальные', 'Технологии', 'Музыка'];
 
@@ -20,6 +23,7 @@ const Index = () => {
       views: '1.2M',
       category: 'Фильмы',
       thumbnail: '/img/6f6cb359-70d7-413d-873f-a6174929d91d.jpg',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
       tags: ['боевик', 'драма', '2024']
     },
     {
@@ -30,6 +34,7 @@ const Index = () => {
       views: '850K',
       category: 'Документальные',
       thumbnail: '/img/9c35c2e9-a3e1-4740-903f-d38c0b1fbbf4.jpg',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4',
       tags: ['природа', 'документальный', 'животные']
     },
     {
@@ -40,6 +45,7 @@ const Index = () => {
       views: '320K',
       category: 'Технологии',
       thumbnail: '/img/dc388ee8-a49f-4c6a-9f92-7a8d8a1b3330.jpg',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_5mb.mp4',
       tags: ['технологии', 'обзор', 'гаджеты']
     },
     {
@@ -50,6 +56,7 @@ const Index = () => {
       views: '2.1M',
       category: 'Фильмы',
       thumbnail: '/img/6f6cb359-70d7-413d-873f-a6174929d91d.jpg',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
       tags: ['триллер', 'мистика', 'детектив']
     },
     {
@@ -60,6 +67,7 @@ const Index = () => {
       views: '670K',
       category: 'Документальные',
       thumbnail: '/img/9c35c2e9-a3e1-4740-903f-d38c0b1fbbf4.jpg',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4',
       tags: ['океан', 'документальный', 'природа']
     },
     {
@@ -70,6 +78,7 @@ const Index = () => {
       views: '1.5M',
       category: 'Технологии',
       thumbnail: '/img/dc388ee8-a49f-4c6a-9f92-7a8d8a1b3330.jpg',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_5mb.mp4',
       tags: ['ИИ', 'технологии', 'будущее']
     }
   ];
@@ -83,6 +92,11 @@ const Index = () => {
     
     return matchesSearch && matchesCategory;
   });
+
+  const handleVideoClick = (video) => {
+    setSelectedVideo(video);
+    setIsPlayerOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -149,7 +163,7 @@ const Index = () => {
         {/* Video Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredVideos.map((video) => (
-            <Card key={video.id} className="bg-gray-900 border-gray-800 hover:bg-gray-800 transition-all duration-300 cursor-pointer group animate-fade-in">
+            <Card key={video.id} className="bg-gray-900 border-gray-800 hover:bg-gray-800 transition-all duration-300 cursor-pointer group animate-fade-in" onClick={() => handleVideoClick(video)}>
               <div className="relative overflow-hidden">
                 <img
                   src={video.thumbnail}
@@ -202,6 +216,75 @@ const Index = () => {
           </div>
         )}
       </div>
+
+      {/* Video Player Modal */}
+      <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
+        <DialogContent className="max-w-4xl bg-black border-gray-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-primary">{selectedVideo?.title}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Video Player */}
+            <div className="relative bg-black rounded-lg overflow-hidden">
+              <video
+                controls
+                className="w-full h-[60vh] object-contain"
+                poster={selectedVideo?.thumbnail}
+                src={selectedVideo?.videoUrl}
+                autoPlay
+              >
+                Ваш браузер не поддерживает воспроизведение видео.
+              </video>
+            </div>
+            
+            {/* Video Info */}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <p className="text-gray-300 mb-3">{selectedVideo?.description}</p>
+                
+                <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
+                  <span className="flex items-center gap-1">
+                    <Icon name="Eye" size={16} />
+                    {selectedVideo?.views} просмотров
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Icon name="Clock" size={16} />
+                    {selectedVideo?.duration}
+                  </span>
+                  <Badge variant="outline" className="border-gray-700 text-gray-400">
+                    {selectedVideo?.category}
+                  </Badge>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {selectedVideo?.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs bg-gray-800 text-gray-300">
+                      #{tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Video Controls */}
+              <div className="flex flex-col gap-2 min-w-fit">
+                <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                  <Icon name="ThumbsUp" size={16} className="mr-2" />
+                  Нравится
+                </Button>
+                <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                  <Icon name="Share" size={16} className="mr-2" />
+                  Поделиться
+                </Button>
+                <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                  <Icon name="Plus" size={16} className="mr-2" />
+                  В плейлист
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="bg-gray-900 border-t border-gray-800 mt-16">
