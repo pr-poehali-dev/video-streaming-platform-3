@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,8 +11,12 @@ const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [uploadedVideos, setUploadedVideos] = useState([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [showUploadZone, setShowUploadZone] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const categories = ['Все', 'Фильмы', 'Сериалы', 'Документальные', 'Технологии', 'Музыка'];
+  const categories = ['Все', 'Фильмы', 'Сериалы', 'Документальные', 'Технологии', 'Музыка', 'Пользовательские'];
 
   const videos = [
     {
@@ -83,7 +87,9 @@ const Index = () => {
     }
   ];
 
-  const filteredVideos = videos.filter(video => {
+  const allVideos = [...videos, ...uploadedVideos];
+  
+  const filteredVideos = allVideos.filter(video => {
     const matchesSearch = video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          video.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          video.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -96,6 +102,77 @@ const Index = () => {
   const handleVideoClick = (video) => {
     setSelectedVideo(video);
     setIsPlayerOpen(true);
+  };
+
+  const handleFileUpload = (files) => {
+    Array.from(files).forEach((file) => {
+      if (file.type.startsWith('video/')) {
+        const video = {
+          id: Date.now() + Math.random(),
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          description: 'Загруженное пользователем видео',
+          duration: '0:00',
+          views: '0',
+          category: 'Пользовательские',
+          thumbnail: '/placeholder.svg',
+          videoUrl: URL.createObjectURL(file),
+          tags: ['загружено', 'пользователь'],
+          isUserUploaded: true,
+          file: file
+        };
+        
+        // Создаем превью для видео
+        const videoElement = document.createElement('video');
+        videoElement.src = video.videoUrl;
+        videoElement.addEventListener('loadedmetadata', () => {
+          const duration = Math.floor(videoElement.duration);
+          const minutes = Math.floor(duration / 60);
+          const seconds = duration % 60;
+          video.duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          
+          // Генерируем thumbnail
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = 320;
+          canvas.height = 180;
+          videoElement.currentTime = 1;
+          
+          videoElement.addEventListener('seeked', () => {
+            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            video.thumbnail = canvas.toDataURL();
+            setUploadedVideos(prev => [...prev, video]);
+          }, { once: true });
+        });
+      }
+    });
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = e.dataTransfer.files;
+    handleFileUpload(files);
+  };
+
+  const handleFileInputChange = (e) => {
+    const files = e.target.files;
+    if (files.length > 0) {
+      handleFileUpload(files);
+    }
+  };
+
+  const removeUploadedVideo = (videoId) => {
+    setUploadedVideos(prev => prev.filter(video => video.id !== videoId));
   };
 
   return (
@@ -124,6 +201,13 @@ const Index = () => {
                 />
                 <Icon name="Search" className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               </div>
+              <Button 
+                onClick={() => setShowUploadZone(!showUploadZone)}
+                className="bg-primary text-white hover:bg-red-600"
+              >
+                <Icon name="Upload" size={20} className="mr-2" />
+                Загрузить
+              </Button>
               <Button variant="outline" size="icon" className="border-gray-700 text-white hover:bg-gray-800">
                 <Icon name="User" size={20} />
               </Button>
@@ -151,6 +235,78 @@ const Index = () => {
           ))}
         </div>
 
+        {/* Upload Zone */}
+        {showUploadZone && (
+          <div className="mb-8">
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Icon name="Upload" size={24} className="text-primary" />
+                  Загрузить видео
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Перетащите видеофайлы сюда или нажмите для выбора
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300 cursor-pointer ${
+                    isDragOver 
+                      ? 'border-primary bg-red-950/20 text-primary' 
+                      : 'border-gray-600 hover:border-gray-500 text-gray-400'
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Icon name="Upload" size={48} className="mx-auto mb-4" />
+                  <p className="text-lg mb-2">Перетащите видео или нажмите для выбора</p>
+                  <p className="text-sm">Поддерживаются форматы: MP4, AVI, MOV, WebM</p>
+                  
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="video/*"
+                    onChange={handleFileInputChange}
+                    className="hidden"
+                  />
+                </div>
+                
+                {uploadedVideos.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="text-white font-medium mb-3">Загруженные видео ({uploadedVideos.length})</h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {uploadedVideos.map((video) => (
+                        <div key={video.id} className="flex items-center justify-between bg-gray-800 p-3 rounded">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-8 bg-gray-700 rounded overflow-hidden">
+                              <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover" />
+                            </div>
+                            <div>
+                              <p className="text-white text-sm font-medium">{video.title}</p>
+                              <p className="text-gray-400 text-xs">{video.duration}</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeUploadedVideo(video.id)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-950/20"
+                          >
+                            <Icon name="Trash2" size={16} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Search Results Info */}
         {searchQuery && (
           <div className="mb-6">
@@ -163,7 +319,7 @@ const Index = () => {
         {/* Video Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredVideos.map((video) => (
-            <Card key={video.id} className="bg-gray-900 border-gray-800 hover:bg-gray-800 transition-all duration-300 cursor-pointer group animate-fade-in" onClick={() => handleVideoClick(video)}>
+            <Card key={video.id} className={`bg-gray-900 border-gray-800 hover:bg-gray-800 transition-all duration-300 cursor-pointer group animate-fade-in ${video.isUserUploaded ? 'ring-1 ring-primary/20' : ''}`} onClick={() => handleVideoClick(video)}>
               <div className="relative overflow-hidden">
                 <img
                   src={video.thumbnail}
@@ -195,7 +351,12 @@ const Index = () => {
                   </Badge>
                 </div>
                 
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1 items-center">
+                  {video.isUserUploaded && (
+                    <Badge variant="outline" className="text-xs border-primary text-primary">
+                      Моё видео
+                    </Badge>
+                  )}
                   {video.tags.map((tag) => (
                     <Badge key={tag} variant="secondary" className="text-xs bg-gray-800 text-gray-300 hover:bg-gray-700">
                       #{tag}
